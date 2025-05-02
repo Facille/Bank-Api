@@ -3,7 +3,7 @@ package credit
 type CreditStatus string
 
 const (
-	CreditStatusActive  CreditStatus = "active"
-	CreditStatusClosed  CreditStatus = "closed"
-	CreditStatusOverdue CreditStatus = "overdue"
+	ACTIVE  CreditStatus = "ACTIVE"
+	CLOSED  CreditStatus = "CLOSED"
+	OVERDUE CreditStatus = "OVERDUE"
 )

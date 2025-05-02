@@ -3,7 +3,7 @@ package account
 type CurrencyType string
 
 const (
-	RUB CurrencyType = "rub"
-	USD CurrencyType = "usd"
-	EUR CurrencyType = "eur"
+	RUB CurrencyType = "RUB"
+	USD CurrencyType = "USD"
+	EUR CurrencyType = "EUR"
 )

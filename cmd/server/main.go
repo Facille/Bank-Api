@@ -16,10 +16,19 @@ func runMigrations(dsn string) {
 	if err != nil {
 		logrus.Fatalf("Ошибка миграций : %v", err)
 	}
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		logrus.Fatalf("Ошибка миграций: %v", err)
+
+	err = m.Up()
+
+	switch {
+	case errors.Is(err, migrate.ErrNoChange):
+		logrus.Info("Миграции не требуются, схема в актуальном состоянии")
+		return
+
+	case err != nil:
+		logrus.Fatalf("Ошибка при применении миграций: %v", err)
 	}
-	logrus.Info("Миграции применены")
+
+	logrus.Info("Миграции успешно применены")
 }
 
 func main() {

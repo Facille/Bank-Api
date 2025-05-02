@@ -12,6 +12,6 @@ type Credit struct {
 	InterestRate float64         `db:"interest_rate" json:"interest_rate"`
 	TermMonths   int             `db:"term_months"   json:"term_months"`
 	StartDate    time.Time       `db:"start_date"    json:"start_date"`
-	Status       CreditStatus    `db:"status"        json:"status"`
+	Status       Status          `db:"status"        json:"status"`
 	CreatedAt    time.Time       `db:"created_at"    json:"created_at"`
 }

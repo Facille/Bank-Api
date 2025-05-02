@@ -63,7 +63,7 @@ func (m *JWTMiddleware) Middleware(next http.Handler) http.Handler {
 }
 
 // GetUserID извлекает ID пользователя из контекста
-func GetUserID(ctx context.Context) (int64, bool) {
-	userID, ok := ctx.Value(UserIDKey).(int64)
-	return userID, ok
+func GetUserID(ctx context.Context) (int64, error) {
+	userID := ctx.Value(UserIDKey).(int64)
+	return userID, nil
 }

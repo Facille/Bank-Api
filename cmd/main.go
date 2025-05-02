@@ -53,6 +53,7 @@ func main() {
 	ctx := context.Background()
 	dbCfg := config.LoadDB()
 	jwtCfg := config.LoadJWT()
+	cryptoCfg := config.LoadCrypto()
 
 	// Подключение к БД и миграции
 	dsn := db.BuildDSN(dbCfg)
@@ -67,12 +68,19 @@ func main() {
 
 	// Инициализация репозиториев
 	userRepo := repository.NewUserRepository(pool)
+	accountRepo := repository.NewAccountRepository(pool)
+	transactionRepo := repository.NewTransactionRepository(pool)
+	cardRepo := repository.NewCardRepository(pool)
 
 	// Инициализация сервисов
 	authService := service.NewAuthService(userRepo, jwtCfg)
+	accountService := service.NewAccountService(accountRepo, transactionRepo)
+	cardService := service.NewCardService(cardRepo, pool, cryptoCfg.HMACKey)
 
 	// Инициализация обработчиков
 	authHandler := handler.NewAuthHandler(authService, logger)
+	accountHandler := handler.NewAccountHandler(accountService, logger)
+	cardHandler := handler.NewCardHandler(cardService, logger)
 
 	// JWT middleware
 	jwtMiddleware := middleware.NewJWTMiddleware(authService, logger)
@@ -88,7 +96,18 @@ func main() {
 	apiRouter := r.PathPrefix("").Subrouter()
 	apiRouter.Use(jwtMiddleware.Middleware)
 
-	// Тут позже будут добавлены защищенные маршруты для счетов, карт и т.д.
+	// Маршруты для счетов
+	apiRouter.HandleFunc("/accounts", accountHandler.CreateAccount).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/accounts", accountHandler.GetAccounts).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/accounts/{id}/balance", accountHandler.UpdateBalance).Methods(http.MethodPatch)
+	apiRouter.HandleFunc("/accounts/{id}/transactions", accountHandler.GetTransactions).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/transfer", accountHandler.Transfer).Methods(http.MethodPost)
+
+	// Маршруты для карт
+	apiRouter.HandleFunc("/cards", cardHandler.CreateCard).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/cards", cardHandler.GetCards).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/cards/{id}", cardHandler.GetCardDetails).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/payments", cardHandler.ProcessPayment).Methods(http.MethodPost)
 
 	// Настройка сервера
 	srv := &http.Server{

@@ -3,13 +3,24 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/therealadik/bank-api/internal/config"
 	"github.com/therealadik/bank-api/internal/db"
+	"github.com/therealadik/bank-api/internal/handler"
+	"github.com/therealadik/bank-api/internal/middleware"
+	"github.com/therealadik/bank-api/internal/repository"
+	"github.com/therealadik/bank-api/internal/service"
 )
 
 func runMigrations(dsn string) {
@@ -33,18 +44,81 @@ func runMigrations(dsn string) {
 }
 
 func main() {
+	// Инициализация логера
+	logger := logrus.New()
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetLevel(logrus.InfoLevel)
+
+	// Загрузка конфигурации
 	ctx := context.Background()
-
 	dbCfg := config.LoadDB()
+	jwtCfg := config.LoadJWT()
 
+	// Подключение к БД и миграции
 	dsn := db.BuildDSN(dbCfg)
 	runMigrations(dsn)
 
 	pool, err := db.New(ctx, dbCfg)
-
 	if err != nil {
-		logrus.Fatalf("Ошибка подключения к БД: %v", err)
+		logger.Fatalf("Ошибка подключения к БД: %v", err)
+	}
+	defer pool.Close()
+	logger.Info("Подключение к БД успешно установлено")
+
+	// Инициализация репозиториев
+	userRepo := repository.NewUserRepository(pool)
+
+	// Инициализация сервисов
+	authService := service.NewAuthService(userRepo, jwtCfg)
+
+	// Инициализация обработчиков
+	authHandler := handler.NewAuthHandler(authService, logger)
+
+	// JWT middleware
+	jwtMiddleware := middleware.NewJWTMiddleware(authService, logger)
+
+	// Настройка маршрутизатора
+	r := mux.NewRouter().PathPrefix("/api").Subrouter()
+
+	// Публичные маршруты (без аутентификации)
+	r.HandleFunc("/register", authHandler.Register).Methods(http.MethodPost)
+	r.HandleFunc("/login", authHandler.Login).Methods(http.MethodPost)
+
+	// Защищенные маршруты (с проверкой JWT)
+	apiRouter := r.PathPrefix("").Subrouter()
+	apiRouter.Use(jwtMiddleware.Middleware)
+
+	// Тут позже будут добавлены защищенные маршруты для счетов, карт и т.д.
+
+	// Настройка сервера
+	srv := &http.Server{
+		Addr:         fmt.Sprintf(":%s", "8080"),
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	defer pool.Close()
+	// Запуск сервера в горутине
+	go func() {
+		logger.Infof("Сервер запущен на порту %s", "8080")
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Fatalf("Ошибка запуска сервера: %v", err)
+		}
+	}()
+
+	// Канал для сигналов завершения
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logger.Info("Завершение работы сервера...")
+
+	// Ожидание завершения текущих запросов
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctxShutdown); err != nil {
+		logger.Fatalf("Ошибка при остановке сервера: %v", err)
+	}
+	logger.Info("Сервер успешно остановлен")
 }

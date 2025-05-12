@@ -1,4 +1,4 @@
-module github.com/therealadik/bank-api
+module github.com/Facille/Bank-Api
 
 go 1.24.2
 

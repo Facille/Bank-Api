@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// JWTConfig содержит настройки для JWT-токенов
 type JWTConfig struct {
 	Secret    string
 	ExpiresIn time.Duration

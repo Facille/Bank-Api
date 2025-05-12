@@ -4,7 +4,6 @@ import (
 	"os"
 )
 
-// DBConfig содержит настройки для подключения к базе данных
 type DBConfig struct {
 	Host     string
 	Port     string
@@ -14,7 +13,6 @@ type DBConfig struct {
 	SSLMode  string
 }
 
-// LoadDB загружает конфигурацию БД из переменных окружения
 func LoadDB() DBConfig {
 	return DBConfig{
 		Host:     getEnv("DB_HOST", "localhost"),
@@ -26,7 +24,6 @@ func LoadDB() DBConfig {
 	}
 }
 
-// getEnv получает значение переменной окружения или возвращает значение по умолчанию
 func getEnv(key, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value

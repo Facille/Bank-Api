@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Facille/Bank-Api/internal/dto"
+	"github.com/Facille/Bank-Api/internal/middleware"
+	"github.com/Facille/Bank-Api/internal/models/account"
+	"github.com/Facille/Bank-Api/internal/service"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/therealadik/bank-api/internal/dto"
-	"github.com/therealadik/bank-api/internal/middleware"
-	"github.com/therealadik/bank-api/internal/models/account"
-	"github.com/therealadik/bank-api/internal/service"
 )
 
 type AccountHandler struct {
@@ -26,9 +26,7 @@ func NewAccountHandler(accountService *service.AccountService, logger *logrus.Lo
 	}
 }
 
-// CreateAccount обработчик для создания нового счета
 func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	// Получаем userID из контекста (установлен middleware)
 	userID, err := middleware.GetUserID(r.Context())
 	if err != nil {
 		h.logger.Errorf("Ошибка получения userID из контекста: %v", err)
@@ -36,7 +34,6 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Декодируем запрос
 	var req dto.CreateAccountRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Errorf("Ошибка декодирования запроса: %v", err)
@@ -44,14 +41,12 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Проверяем валютный код (пока только RUB)
 	if req.Currency != account.RUB {
 		h.logger.Warnf("Попытка создать счет в неподдерживаемой валюте: %s", req.Currency)
 		http.Error(w, "Поддерживается только валюта RUB", http.StatusBadRequest)
 		return
 	}
 
-	// Создаем счет
 	newAccount, err := h.accountService.CreateAccount(r.Context(), userID, req.Currency)
 	if err != nil {
 		h.logger.Errorf("Ошибка создания счета: %v", err)
@@ -59,7 +54,6 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Формируем ответ
 	resp := dto.AccountResponse{
 		ID:        newAccount.ID,
 		UserID:    newAccount.UserID,
@@ -68,7 +62,6 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: newAccount.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
-	// Отправляем ответ
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -76,9 +69,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetAccounts обработчик для получения списка счетов пользователя
 func (h *AccountHandler) GetAccounts(w http.ResponseWriter, r *http.Request) {
-	// Получаем userID из контекста
 	userID, err := middleware.GetUserID(r.Context())
 	if err != nil {
 		h.logger.Errorf("Ошибка получения userID из контекста: %v", err)
@@ -86,7 +77,6 @@ func (h *AccountHandler) GetAccounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Получаем счета
 	accounts, err := h.accountService.GetAccountsByUserID(r.Context(), userID)
 	if err != nil {
 		h.logger.Errorf("Ошибка получения счетов: %v", err)
@@ -94,7 +84,6 @@ func (h *AccountHandler) GetAccounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Формируем ответ
 	resp := dto.AccountsListResponse{
 		Accounts: make([]dto.AccountResponse, 0, len(accounts)),
 	}
@@ -109,16 +98,13 @@ func (h *AccountHandler) GetAccounts(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Отправляем ответ
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Errorf("Ошибка кодирования ответа: %v", err)
 	}
 }
 
-// UpdateBalance обработчик для пополнения/списания средств
 func (h *AccountHandler) UpdateBalance(w http.ResponseWriter, r *http.Request) {
-	// Получаем userID из контекста
 	userID, err := middleware.GetUserID(r.Context())
 	if err != nil {
 		h.logger.Errorf("Ошибка получения userID из контекста: %v", err)
@@ -126,7 +112,6 @@ func (h *AccountHandler) UpdateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Получаем ID счета из URL
 	vars := mux.Vars(r)
 	accountID, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -135,7 +120,6 @@ func (h *AccountHandler) UpdateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Декодируем запрос
 	var req dto.UpdateBalanceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Errorf("Ошибка декодирования запроса: %v", err)
@@ -143,10 +127,8 @@ func (h *AccountHandler) UpdateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Обновляем баланс
 	err = h.accountService.UpdateBalance(r.Context(), accountID, userID, req.Amount)
 	if err != nil {
-		// Определяем тип ошибки для возврата подходящего HTTP-статуса
 		switch {
 		case errors.Is(err, service.ErrInsufficientFunds):
 			h.logger.Warnf("Недостаточно средств для операции: %v", err)
@@ -158,7 +140,6 @@ func (h *AccountHandler) UpdateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Получаем обновленный счет для ответа
 	updatedAccount, err := h.accountService.GetAccountByID(r.Context(), accountID, userID)
 	if err != nil {
 		h.logger.Errorf("Ошибка получения обновленного счета: %v", err)
@@ -166,7 +147,6 @@ func (h *AccountHandler) UpdateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Формируем ответ
 	resp := dto.AccountResponse{
 		ID:        updatedAccount.ID,
 		UserID:    updatedAccount.UserID,
@@ -175,16 +155,13 @@ func (h *AccountHandler) UpdateBalance(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: updatedAccount.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 
-	// Отправляем ответ
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Errorf("Ошибка кодирования ответа: %v", err)
 	}
 }
 
-// Transfer обработчик для перевода между счетами
 func (h *AccountHandler) Transfer(w http.ResponseWriter, r *http.Request) {
-	// Получаем userID из контекста
 	userID, err := middleware.GetUserID(r.Context())
 	if err != nil {
 		h.logger.Errorf("Ошибка получения userID из контекста: %v", err)
@@ -192,7 +169,6 @@ func (h *AccountHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Декодируем запрос
 	var req dto.TransferRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Errorf("Ошибка декодирования запроса: %v", err)
@@ -200,10 +176,8 @@ func (h *AccountHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Выполняем перевод
 	err = h.accountService.Transfer(r.Context(), req.FromAccountID, req.ToAccountID, userID, req.Amount)
 	if err != nil {
-		// Определяем тип ошибки
 		switch {
 		case errors.Is(err, service.ErrInsufficientFunds):
 			h.logger.Warnf("Недостаточно средств для перевода: %v", err)
@@ -221,7 +195,6 @@ func (h *AccountHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Отправляем успешный ответ
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]string{"status": "success"}); err != nil {
@@ -229,9 +202,7 @@ func (h *AccountHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetTransactions обработчик для получения списка транзакций по счету
 func (h *AccountHandler) GetTransactions(w http.ResponseWriter, r *http.Request) {
-	// Получаем userID из контекста
 	userID, err := middleware.GetUserID(r.Context())
 	if err != nil {
 		h.logger.Errorf("Ошибка получения userID из контекста: %v", err)
@@ -239,7 +210,6 @@ func (h *AccountHandler) GetTransactions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Получаем ID счета из URL
 	vars := mux.Vars(r)
 	accountID, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -248,7 +218,6 @@ func (h *AccountHandler) GetTransactions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Получаем транзакции
 	transactions, err := h.accountService.GetTransactionsByAccountID(r.Context(), accountID, userID)
 	if err != nil {
 		h.logger.Errorf("Ошибка получения транзакций: %v", err)
@@ -256,7 +225,6 @@ func (h *AccountHandler) GetTransactions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Формируем ответ
 	resp := dto.TransactionListResponse{
 		Transactions: make([]dto.TransactionResponse, 0, len(transactions)),
 	}
@@ -272,7 +240,6 @@ func (h *AccountHandler) GetTransactions(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
-	// Отправляем ответ
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Errorf("Ошибка кодирования ответа: %v", err)

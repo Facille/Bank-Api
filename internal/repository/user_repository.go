@@ -4,32 +4,27 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Facille/Bank-Api/internal/models"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/therealadik/bank-api/internal/models"
 )
 
-// ErrUserNotFound возвращается, когда пользователь не найден
 var ErrUserNotFound = errors.New("пользователь не найден")
 
-// UserRepository интерфейс для работы с пользователями
 type UserRepository interface {
 	Create(ctx context.Context, user *models.User) (int64, error)
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	GetByID(ctx context.Context, id int64) (*models.User, error)
 }
 
-// UserRepositoryPgx реализация репозитория пользователей с использованием pgx
 type UserRepositoryPgx struct {
 	pool *pgxpool.Pool
 }
 
-// NewUserRepository создает новый репозиторий пользователей
 func NewUserRepository(pool *pgxpool.Pool) UserRepository {
 	return &UserRepositoryPgx{pool: pool}
 }
 
-// Create создает нового пользователя
 func (r *UserRepositoryPgx) Create(ctx context.Context, user *models.User) (int64, error) {
 	var id int64
 
@@ -46,7 +41,6 @@ func (r *UserRepositoryPgx) Create(ctx context.Context, user *models.User) (int6
 	return id, nil
 }
 
-// GetByEmail находит пользователя по email
 func (r *UserRepositoryPgx) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	user := &models.User{}
 
@@ -66,7 +60,6 @@ func (r *UserRepositoryPgx) GetByEmail(ctx context.Context, email string) (*mode
 	return user, nil
 }
 
-// GetByID находит пользователя по ID
 func (r *UserRepositoryPgx) GetByID(ctx context.Context, id int64) (*models.User, error) {
 	user := &models.User{}
 

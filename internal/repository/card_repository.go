@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
+	"github.com/Facille/Bank-Api/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/therealadik/bank-api/internal/models"
 )
 
 type CardRepository struct {
@@ -15,7 +15,6 @@ func NewCardRepository(db *pgxpool.Pool) *CardRepository {
 	return &CardRepository{db: db}
 }
 
-// CreateCard создает новую карту с зашифрованными данными
 func (r *CardRepository) CreateCard(ctx context.Context, userID int64, encryptedNumber, encryptedExpire []byte, cvvHash string) (*models.Card, error) {
 	query := `
 		INSERT INTO cards (user_id, card_number, expire, cvv_hash)
@@ -30,7 +29,6 @@ func (r *CardRepository) CreateCard(ctx context.Context, userID int64, encrypted
 		return nil, err
 	}
 
-	// Устанавливаем зашифрованные данные
 	card.CardNumber = encryptedNumber
 	card.Expire = encryptedExpire
 	card.CVVHash = cvvHash
@@ -38,7 +36,6 @@ func (r *CardRepository) CreateCard(ctx context.Context, userID int64, encrypted
 	return &card, nil
 }
 
-// GetCardByID получает карту по ID
 func (r *CardRepository) GetCardByID(ctx context.Context, cardID int64) (*models.Card, error) {
 	query := `
 		SELECT id, user_id, card_number, expire, cvv_hash, created_at
@@ -56,7 +53,6 @@ func (r *CardRepository) GetCardByID(ctx context.Context, cardID int64) (*models
 	return &card, nil
 }
 
-// GetCardsByUserID получает все карты пользователя
 func (r *CardRepository) GetCardsByUserID(ctx context.Context, userID int64) ([]*models.Card, error) {
 	query := `
 		SELECT id, user_id, created_at
@@ -86,7 +82,6 @@ func (r *CardRepository) GetCardsByUserID(ctx context.Context, userID int64) ([]
 	return cards, nil
 }
 
-// IsCardExistsForUser проверяет, существует ли карта с указанным ID для пользователя
 func (r *CardRepository) IsCardExistsForUser(ctx context.Context, cardID int64, userID int64) (bool, error) {
 	query := `
 		SELECT 1 FROM cards

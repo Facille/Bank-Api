@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
+	"github.com/Facille/Bank-Api/internal/models/account"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
-	"github.com/therealadik/bank-api/internal/models/account"
 )
 
 type AccountRepository struct {
@@ -16,7 +16,6 @@ func NewAccountRepository(db *pgxpool.Pool) *AccountRepository {
 	return &AccountRepository{db: db}
 }
 
-// CreateAccount создает новый счет для пользователя
 func (r *AccountRepository) CreateAccount(ctx context.Context, userID int64, currency account.Currency) (*account.Account, error) {
 	query := `
 		INSERT INTO accounts (user_id, currency)
@@ -33,7 +32,6 @@ func (r *AccountRepository) CreateAccount(ctx context.Context, userID int64, cur
 	return &acc, nil
 }
 
-// GetAccountByID получает счет по его ID
 func (r *AccountRepository) GetAccountByID(ctx context.Context, id int64) (*account.Account, error) {
 	query := `
 		SELECT id, user_id, balance, currency, created_at
@@ -50,7 +48,6 @@ func (r *AccountRepository) GetAccountByID(ctx context.Context, id int64) (*acco
 	return &acc, nil
 }
 
-// GetAccountsByUserID получает все счета пользователя
 func (r *AccountRepository) GetAccountsByUserID(ctx context.Context, userID int64) ([]*account.Account, error) {
 	query := `
 		SELECT id, user_id, balance, currency, created_at
@@ -79,7 +76,6 @@ func (r *AccountRepository) GetAccountsByUserID(ctx context.Context, userID int6
 	return accounts, nil
 }
 
-// UpdateBalance обновляет баланс счета
 func (r *AccountRepository) UpdateBalance(ctx context.Context, id int64, amount decimal.Decimal) error {
 	query := `
 		UPDATE accounts
@@ -90,7 +86,6 @@ func (r *AccountRepository) UpdateBalance(ctx context.Context, id int64, amount 
 	return err
 }
 
-// TransferBetweenAccounts выполняет перевод между счетами в транзакции
 func (r *AccountRepository) TransferBetweenAccounts(ctx context.Context, fromID, toID int64, amount decimal.Decimal) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -98,7 +93,6 @@ func (r *AccountRepository) TransferBetweenAccounts(ctx context.Context, fromID,
 	}
 	defer tx.Rollback(ctx)
 
-	// Списание со счета отправителя
 	updateFromQuery := `
 		UPDATE accounts
 		SET balance = balance - $1
@@ -111,7 +105,6 @@ func (r *AccountRepository) TransferBetweenAccounts(ctx context.Context, fromID,
 		return err
 	}
 
-	// Пополнение счета получателя
 	updateToQuery := `
 		UPDATE accounts
 		SET balance = balance + $1

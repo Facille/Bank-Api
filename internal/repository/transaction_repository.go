@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
+	"github.com/Facille/Bank-Api/internal/models/transaction"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
-	"github.com/therealadik/bank-api/internal/models/transaction"
 )
 
 type TransactionRepository struct {
@@ -16,7 +16,6 @@ func NewTransactionRepository(db *pgxpool.Pool) *TransactionRepository {
 	return &TransactionRepository{db: db}
 }
 
-// CreateTransaction создает новую запись о транзакции
 func (r *TransactionRepository) CreateTransaction(ctx context.Context, accountID int64, amount decimal.Decimal,
 	txType transaction.Type, status transaction.Status) (*transaction.Transaction, error) {
 	query := `
@@ -34,7 +33,6 @@ func (r *TransactionRepository) CreateTransaction(ctx context.Context, accountID
 	return &tx, nil
 }
 
-// GetTransactionsByAccountID получает все транзакции для указанного счета
 func (r *TransactionRepository) GetTransactionsByAccountID(ctx context.Context, accountID int64) ([]*transaction.Transaction, error) {
 	query := `
 		SELECT id, account_id, amount, type, status, created_at
@@ -63,7 +61,6 @@ func (r *TransactionRepository) GetTransactionsByAccountID(ctx context.Context, 
 	return transactions, nil
 }
 
-// GetTransactionsByUserID получает все транзакции для всех счетов пользователя
 func (r *TransactionRepository) GetTransactionsByUserID(ctx context.Context, userID int64) ([]*transaction.Transaction, error) {
 	query := `
 		SELECT t.id, t.account_id, t.amount, t.type, t.status, t.created_at
